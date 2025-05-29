@@ -1,0 +1,234 @@
+From 34226b022052877a6a81bbbc5816ec2977881695 Mon Sep 17 00:00:00 2001
+From: SeveredAsif <aritra.khan91@gmail.com>
+Date: Thu, 29 May 2025 19:46:13 +0600
+Subject: [PATCH] history all added
+
+---
+ .vscode/settings.json |  8 ++++++++
+ Makefile              |  1 +
+ kernel/defs.h         |  9 +++++++++
+ kernel/syscall.c      | 42 ++++++++++++++++++++++++++++++++++++++++++
+ kernel/syscall.h      |  1 +
+ kernel/sysproc.c      | 21 +++++++++++++++++++++
+ logs.txt              |  6 ++++++
+ user/history.c        |  9 +++++++++
+ user/user.h           |  1 +
+ user/usys.pl          |  1 +
+ 10 files changed, 99 insertions(+)
+ create mode 100644 .vscode/settings.json
+ create mode 100644 logs.txt
+ create mode 100644 user/history.c
+
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+new file mode 100644
+index 0000000..9a4ce54
+--- /dev/null
++++ b/.vscode/settings.json
+@@ -0,0 +1,8 @@
++{
++    "files.associations": {
++        "stat.h": "c",
++        "user.h": "c",
++        "types.h": "c",
++        "defs.h": "c"
++    }
++}
+\ No newline at end of file
+diff --git a/Makefile b/Makefile
+index f8c820e..27eadb4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -139,6 +139,7 @@ UPROGS=\
+ 	$U/_grind\
+ 	$U/_wc\
+ 	$U/_zombie\
++	$U/_history\
+ 
+ fs.img: mkfs/mkfs README $(UPROGS)
+ 	mkfs/mkfs fs.img README $(UPROGS)
+diff --git a/kernel/defs.h b/kernel/defs.h
+index d1b6bb9..62e74ad 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -9,6 +9,15 @@ struct sleeplock;
+ struct stat;
+ struct superblock;
+ 
++struct syscall_stat {
++    char syscall_name[16];
++    int count;
++    int accum_time;
++  };
++  
++extern struct syscall_stat syscall_stats[];
++  
++
+ // bio.c
+ void            binit(void);
+ struct buf*     bread(uint, uint);
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index ed65409..c4b95f1 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -7,6 +7,15 @@
+ #include "syscall.h"
+ #include "defs.h"
+ 
++
++// struct syscall_stat {
++//   char syscall_name [16];
++//   int count ;
++//   int accum_time ;
++//   };
++
++
++
+ // Fetch the uint64 at addr from the current process.
+ int
+ fetchaddr(uint64 addr, uint64 *ip)
+@@ -101,6 +110,7 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_history(void);
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,7 +136,36 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_history]  sys_history,
+ };
++ char *syscall_names[] = {
++  [SYS_fork]    "fork",
++  [SYS_exit]    "exit",
++  [SYS_wait]    "wait",
++  [SYS_pipe]    "pipe",
++  [SYS_read]    "read",
++  [SYS_kill]    "kill",
++  [SYS_exec]    "exec",
++  [SYS_fstat]   "fstat",
++  [SYS_chdir]   "chdir",
++  [SYS_dup]     "dup",
++  [SYS_getpid]  "getpid",
++  [SYS_sbrk]    "sbrk",
++  [SYS_sleep]   "sleep",
++  [SYS_uptime]  "uptime",
++  [SYS_open]    "open",
++  [SYS_write]   "write",
++  [SYS_mknod]   "mknod",
++  [SYS_unlink]  "unlink",
++  [SYS_link]    "link",
++  [SYS_mkdir]   "mkdir",
++  [SYS_close]   "close",
++  [SYS_history] "history",
++};
++
++
++// Array of syscall_stat, one per syscall (NUM_SYSCALLS = 24 in xv6)
++struct syscall_stat syscall_stats[NELEM(syscalls)];
+ 
+ void
+ syscall(void)
+@@ -139,6 +178,9 @@ syscall(void)
+     // Use num to lookup the system call function for num, call it,
+     // and store its return value in p->trapframe->a0
+     p->trapframe->a0 = syscalls[num]();
++    syscall_stats[num].count++;
++
++  
+   } else {
+     printf("%d %s: unknown sys call %d\n",
+             p->pid, p->name, num);
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index bc5f356..df8836e 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,4 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_history 22
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..b5e5b5b 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -91,3 +91,24 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++// struct syscall_stat {
++//   char syscall_name[16];
++//   int count;
++//   int accum_time;
++// };
++
++
++extern char *syscall_names[]; 
++
++
++uint64 sys_history(void){
++  printf("in kernel\n");
++  for(int i = 0; i < 23; i++){
++    if (syscall_names[i]) {
++      safestrcpy(syscall_stats[i].syscall_name, syscall_names[i], 16);
++    }
++    printf("%d: syscall: %s, #: %d\n", i, syscall_stats[i].syscall_name, syscall_stats[i].count);
++  }
++  return 0;
++}
+diff --git a/logs.txt b/logs.txt
+new file mode 100644
+index 0000000..6c0b574
+--- /dev/null
++++ b/logs.txt
+@@ -0,0 +1,6 @@
++24 May 2025 
++1. 9:52 pm - 10:20 - syscall made
++
++29 May 2025
++1. 10:33 am - 11:25 am - useless time waste 
++2. 6:35 pm - 7:44 pm - all system call counts without time
+\ No newline at end of file
+diff --git a/user/history.c b/user/history.c
+new file mode 100644
+index 0000000..97e4016
+--- /dev/null
++++ b/user/history.c
+@@ -0,0 +1,9 @@
++#include "kernel/types.h"
++#include "kernel/stat.h"
++#include "user/user.h"
++
++int main(){
++    history();
++    printf("hello\n");
++    return 0;
++}
+\ No newline at end of file
+diff --git a/user/user.h b/user/user.h
+index f16fe27..07af889 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -22,6 +22,7 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int history(void);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/user/usys.pl b/user/usys.pl
+index 01e426e..9d54e5b 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -36,3 +36,4 @@ entry("getpid");
+ entry("sbrk");
+ entry("sleep");
+ entry("uptime");
++entry("history");
+-- 
+2.43.0
+
