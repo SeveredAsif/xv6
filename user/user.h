@@ -1,3 +1,4 @@
+struct syscall_stat;
 struct stat;
 
 // system calls
@@ -22,7 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int history(void);
+int history(int, struct syscall_stat*);
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "stats.h"
 
 uint64
 sys_exit(void)
@@ -101,14 +102,38 @@ sys_uptime(void)
 
 extern char *syscall_names[]; 
 
+extern struct syscall_stat syscall_stats[];
+
 
 uint64 sys_history(void){
   printf("in kernel\n");
-  for(int i = 0; i < 23; i++){
-    if (syscall_names[i]) {
-      safestrcpy(syscall_stats[i].syscall_name, syscall_names[i], 16);
+  int syscall_number;
+  uint64 user_stat_struct_pointer;
+
+  argint(0, &syscall_number);
+  if(syscall_number<0){
+    for(int i = 0; i < 23; i++){
+      if (syscall_names[i]) {
+        safestrcpy(syscall_stats[i].syscall_name, syscall_names[i], 16);
+      }
+      printf("%d: syscall: %s, #: %d\n", i, syscall_stats[i].syscall_name, syscall_stats[i].count);
     }
-    printf("%d: syscall: %s, #: %d\n", i, syscall_stats[i].syscall_name, syscall_stats[i].count);
   }
+
+  if (syscall_names[syscall_number]) {
+    safestrcpy(syscall_stats[syscall_number].syscall_name, syscall_names[syscall_number], 16);
+  }
+
+
+  argaddr(1, &user_stat_struct_pointer);
+  if(user_stat_struct_pointer<0){
+    return -1;
+  }
+
+
+  if (copyout(myproc()->pagetable, user_stat_struct_pointer, (char *)&syscall_stats[syscall_number], sizeof(syscall_stats[syscall_number])) < 0){
+    return -1;
+  }
+ 
   return 0;
 }

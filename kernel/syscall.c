@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "syscall.h"
 #include "defs.h"
+#include "stats.h"
 
 
 // struct syscall_stat {
@@ -164,7 +165,7 @@ static uint64 (*syscalls[])(void) = {
 };
 
 
-// Array of syscall_stat, one per syscall (NUM_SYSCALLS = 24 in xv6)
+
 struct syscall_stat syscall_stats[NELEM(syscalls)];
 
 void
