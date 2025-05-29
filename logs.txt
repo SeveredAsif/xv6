@@ -1,0 +1,6 @@
+24 May 2025 
+1. 9:52 pm - 10:20 - syscall made
+
+29 May 2025
+1. 10:33 am - 11:25 am - useless time waste 
+2. 6:35 pm - 7:44 pm - all system call counts without time

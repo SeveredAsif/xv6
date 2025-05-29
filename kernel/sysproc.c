@@ -91,3 +91,24 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// struct syscall_stat {
+//   char syscall_name[16];
+//   int count;
+//   int accum_time;
+// };
+
+
+extern char *syscall_names[]; 
+
+
+uint64 sys_history(void){
+  printf("in kernel\n");
+  for(int i = 0; i < 23; i++){
+    if (syscall_names[i]) {
+      safestrcpy(syscall_stats[i].syscall_name, syscall_names[i], 16);
+    }
+    printf("%d: syscall: %s, #: %d\n", i, syscall_stats[i].syscall_name, syscall_stats[i].count);
+  }
+  return 0;
+}

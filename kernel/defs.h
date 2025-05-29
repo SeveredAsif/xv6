@@ -9,6 +9,15 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+struct syscall_stat {
+    char syscall_name[16];
+    int count;
+    int accum_time;
+  };
+  
+extern struct syscall_stat syscall_stats[];
+  
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
