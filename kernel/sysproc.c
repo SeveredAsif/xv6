@@ -106,19 +106,41 @@ extern struct syscall_stat syscall_stats[];
 
 
 uint64 sys_history(void){
-  printf("in kernel\n");
   int syscall_number;
   uint64 user_stat_struct_pointer;
 
   argint(0, &syscall_number);
+
+
   if(syscall_number<0){
-    for(int i = 0; i < 23; i++){
-      if (syscall_names[i]) {
-        safestrcpy(syscall_stats[i].syscall_name, syscall_names[i], 16);
-      }
-      printf("%d: syscall: %s, #: %d\n", i, syscall_stats[i].syscall_name, syscall_stats[i].count);
-    }
+
+    return -1;
+    // argaddr(1, &user_stat_struct_array_pointer);
+
+    // if(user_stat_struct_array_pointer<0){
+    //   return -1;
+    // }
+
+
+    // for(int i = 0; i < 23; i++){
+
+
+    //   if (syscall_names[i]) {
+    //     safestrcpy(syscall_stats[i].syscall_name, syscall_names[i], 16);
+    //   }
+
+
+    //   if (copyout(myproc()->pagetable, (user_stat_struct_pointer+8*i), (char *)&syscall_stats[i], sizeof(syscall_stats[i])) < 0){
+    //     return -1;
+    //   }
+
+
+    //   //printf("%d: syscall: %s, #: %d\n", i, syscall_stats[i].syscall_name, syscall_stats[i].count);
+    // }
+
+
   }
+
 
   if (syscall_names[syscall_number]) {
     safestrcpy(syscall_stats[syscall_number].syscall_name, syscall_names[syscall_number], 16);
@@ -136,4 +158,6 @@ uint64 sys_history(void){
   }
  
   return 0;
+
+
 }

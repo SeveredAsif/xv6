@@ -4,5 +4,8 @@
 29 May 2025
 1. 10:33 am - 11:25 am - useless time waste 
 2. 6:35 pm - 7:44 pm - all system call counts without time
-3. 7:52 pm - 8:24 pm - user end added struct 
+3. 7:52 pm - 8:24 pm - user end added struct  
 4. 9:15 pm - 9:22 - custom history done
+
+30 May 2025
+1. 7:15 - 
