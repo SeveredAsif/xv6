@@ -171,6 +171,9 @@ struct syscall_stat syscall_stats[NELEM(syscalls)];
 void
 syscall(void)
 {
+  acquire(&tickslock);
+  uint ticks0 = ticks;
+  release(&tickslock);
   int num;
   struct proc *p = myproc();
 
@@ -180,7 +183,11 @@ syscall(void)
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
     syscall_stats[num].count++;
-
+    acquire(&tickslock);
+    uint ticks1 = ticks;
+    release(&tickslock);
+    syscall_stats[num].accum_time = ticks1-ticks0;
+    //printf("syscall time: %d\n",ticks1-ticks0);
   
   } else {
     printf("%d %s: unknown sys call %d\n",
