@@ -178,6 +178,7 @@ uint64 sys_settickets(void){
     global_stat.tickets_current[num] = DEFAULT_TICKET_COUNT;
     p->original_tickets = DEFAULT_TICKET_COUNT;
     p->remaining_tickets = DEFAULT_TICKET_COUNT;
+    release(&p->lock);
     return 0;
   }
   global_stat.tickets_original[num] = numberOfTickets;

@@ -6,7 +6,7 @@ int main()
 {
     struct pstat p;
     getpinfo(&p);
-    printf("PID\t| In Use | inQ | Tickets(Original) | Tickets(Current) | Time Slices\n");
+    printf("PID\t| In Use | inQ | Original Tickets | Current Tickets | Time Slices\n");
     printf("-------------------------------------------------------------------------\n");
     
     for (int i = 0; i < NPROC; i++) {

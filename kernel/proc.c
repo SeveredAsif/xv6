@@ -126,6 +126,7 @@ allocpid()
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
+extern struct pstat global_stat;
 static struct proc*
 allocproc(void)
 {
@@ -165,6 +166,17 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+  if(p->original_tickets==0){
+
+    p->original_tickets = DEFAULT_TICKET_COUNT;
+    p->remaining_tickets = DEFAULT_TICKET_COUNT;
+    
+  
+    global_stat.tickets_original[p - proc] = DEFAULT_TICKET_COUNT;
+    global_stat.tickets_current[p - proc] = DEFAULT_TICKET_COUNT;
+
+  }
 
   return p;
 }
@@ -462,11 +474,11 @@ wait(uint64 addr)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
-extern struct pstat global_stat;
+
 void
 scheduler(void)
 {
-  printf("scheduler reaching\n");
+  //printf("scheduler reaching\n");
   int startTime = ticks;
   struct proc *p;
   struct cpu *c = mycpu();
@@ -496,7 +508,7 @@ scheduler(void)
 
     //LOTTERY
   while(1){
-    //printf("scheduler reaching at time: %d\n",currTime);
+      // printf("scheduler reaching lottery at time: %d\n",currTime);
       //first choose a random number 
       struct xorshift128p_state seed;
       seed.x[0] = 12345;
@@ -522,41 +534,63 @@ scheduler(void)
           acquire(&p->lock);
           p->remaining_tickets = p->original_tickets;
           //have to check this logic
-          p->inq = 1;
+          //p->inq = 1;
           int i = p-proc;
           global_stat.tickets_current[i] = p->original_tickets;
-          global_stat.inQ[i] = 1;
+          //global_stat.inQ[i] = 1;
           release(&p->lock);
         }
+        //printf("breaking\n");
         break; //jump to level 2 
       } 
       //printf("scheduler reaching tickets: %d\n",total_remaining_tickets);
       int chosenTicketNumber = random_number % total_remaining_tickets;
       struct proc* chosenProc = 0;
-      int currentBest = __INT_MAX__; 
+      //int currentBest = __INT_MAX__; 
+      int ticketSum = 0;
       
 
       //choosing the proc 
       //if i got 15 as random number, and i have processes with 10,20,30 remaining tickets, i will choose the second process 
-      for(int i=0; i<currInd; i++){
+      // for(int i=0; i<currInd; i++){
+      //   p = lotteryPool[i];
+      //   acquire(&p->lock);
+      //   if(p->remaining_tickets>chosenTicketNumber && p->remaining_tickets<currentBest){
+      //     currentBest = p->remaining_tickets;
+      //     chosenProc = p;
+      //     printf("chosen lottery: %d\n",p->pid);
+      //   }
+      //   release(&p->lock);
+      // }
+
+      for(int i = 0; i < currInd; i++) {
         p = lotteryPool[i];
         acquire(&p->lock);
-        if(p->remaining_tickets>chosenTicketNumber && p->remaining_tickets<currentBest){
-          currentBest = p->remaining_tickets;
-          chosenProc = p;
-          printf("chosen lottery: %d\n",p->pid);
+      
+        ticketSum += p->remaining_tickets;
+      
+        if(ticketSum > chosenTicketNumber) {
+          //if(p->remaining_tickets < currentBest) {
+            
+            chosenProc = p;
+            release(&p->lock);
+            break;
+          
         }
+      
         release(&p->lock);
       }
 
-      if(chosenProc==0) break;
+      if(chosenProc==0){break;} 
       int index = chosenProc - proc;
+      //printf("chosen index: %d\n",index);
       global_stat.inuse[index] = 1;
       global_stat.pid[index] = chosenProc->pid;
       while(chosenProc->state == RUNNABLE && chosenProc->runtime < TIME_LIMIT_1){
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
+        acquire(&chosenProc->lock);
         chosenProc->state = RUNNING;
         c->proc = chosenProc;
         swtch(&c->context, &chosenProc->context);
@@ -568,6 +602,8 @@ scheduler(void)
         chosenProc->runtime += 1;
         chosenProc->remaining_tickets -= 1;
         global_stat.tickets_current[index] -= 1;
+        //printf("remaining tickets: %d\n",chosenProc->remaining_tickets);
+        release(&chosenProc->lock);
     }
       
     
