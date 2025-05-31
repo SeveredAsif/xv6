@@ -106,4 +106,7 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   int runtime;
+  int inq;
+  int original_tickets;
+  int remaining_tickets;
 };

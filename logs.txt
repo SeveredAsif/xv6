@@ -17,4 +17,7 @@
 2. 12:53 pm - 1:45 pm - added one user func and two syscalls 
 3. 3;01 PM - 4:31 pm - round robin almost done, global stat printed in dummyproc, global stat added in sysproc.c 
 4. 4:46 pm - 5:45 pm - RR done ig (inuse update left, lottery random left)
-dummyproc&;testprocinfo
+dummyproc 100&;dummyproc 200&;dummyproc 300&;testprocinfo
+5. 6:51 pm - 7:09 pm - changing in proc.h for inuse, inq etc , and fork and tickets 
+6. 7:31 pm - 9:54 pm - buggy lottery (inq prblm )
+7. 9:55 pm - 10:35 - bug almost gone but every process running in RR 

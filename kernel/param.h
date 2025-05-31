@@ -14,5 +14,5 @@
 #define USERSTACK    1     // user stack pages
 #define TIME_LIMIT_1 1
 #define TIME_LIMIT_2 2
-#define BOOST INTERVAL 64
+#define BOOST_INTERVAL 64
 #define DEFAULT_TICKET_COUNT 10

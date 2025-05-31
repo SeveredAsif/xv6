@@ -7,6 +7,25 @@
 #include "defs.h"
 #include "pstat.h"
 
+
+//source = https://en.wikipedia.org/wiki/Xorshift#xorshift+
+struct xorshift128p_state {
+  uint64_t x[2];
+};
+
+/* The state must be seeded so that it is not all zero */
+uint64_t xorshift128p(struct xorshift128p_state *state)
+{   
+uint64_t t = state->x[0];
+uint64_t const s = state->x[1];
+state->x[0] = s;
+t ^= t << 23;		// a
+t ^= t >> 18;		// b -- Again, the shifts and the multipliers are tunable
+t ^= s ^ (s >> 5);	// c
+state->x[1] = t;
+return t + s;
+}
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -322,7 +341,8 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
-
+  np->original_tickets = p->original_tickets;
+  np->remaining_tickets = p->original_tickets;
   return pid;
 }
 
@@ -446,24 +466,133 @@ extern struct pstat global_stat;
 void
 scheduler(void)
 {
+  printf("scheduler reaching\n");
+  int startTime = ticks;
   struct proc *p;
   struct cpu *c = mycpu();
 
   c->proc = 0;
   for(;;){
+    
+    //priority boosting
+    int currTime = ticks;
+    
+    if(currTime-startTime>BOOST_INTERVAL){
+      for(p=proc;p<&proc[NPROC];p++){
+        acquire(&p->lock);
+        p->inq = 0;
+        int i = p-proc;
+        global_stat.inQ[i] = 0;
+        release(&p->lock);
+      }
+      startTime = ticks;
+    }
+
     // The most recent process to run may have had interrupts
     // turned off; enable them to avoid a deadlock if all
     // processes are waiting.
     intr_on();
-
     int found = 0;
+
+    //LOTTERY
+  while(1){
+    //printf("scheduler reaching at time: %d\n",currTime);
+      //first choose a random number 
+      struct xorshift128p_state seed;
+      seed.x[0] = 12345;
+      seed.x[1] = 98765;
+      uint64_t random_number =  xorshift128p(&seed);
+      //make an array with proccesses that are inq = 0 and runnable and tickets > 0 
+      struct proc *lotteryPool[NPROC]; 
+      int currInd = 0;
+      int total_remaining_tickets = 0;
+      for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->inq==0 && p->remaining_tickets>0 && p->state==RUNNABLE){
+          lotteryPool[currInd] = p;
+          currInd++;
+          total_remaining_tickets += p->remaining_tickets;
+        }
+        release(&p->lock);
+      }
+
+      if(total_remaining_tickets == 0) {
+        //reinitialize all tickets to original ones
+        for(p = proc;p<&proc[NPROC];p++){
+          acquire(&p->lock);
+          p->remaining_tickets = p->original_tickets;
+          //have to check this logic
+          p->inq = 1;
+          int i = p-proc;
+          global_stat.tickets_current[i] = p->original_tickets;
+          global_stat.inQ[i] = 1;
+          release(&p->lock);
+        }
+        break; //jump to level 2 
+      } 
+      //printf("scheduler reaching tickets: %d\n",total_remaining_tickets);
+      int chosenTicketNumber = random_number % total_remaining_tickets;
+      struct proc* chosenProc = 0;
+      int currentBest = __INT_MAX__; 
+      
+
+      //choosing the proc 
+      //if i got 15 as random number, and i have processes with 10,20,30 remaining tickets, i will choose the second process 
+      for(int i=0; i<currInd; i++){
+        p = lotteryPool[i];
+        acquire(&p->lock);
+        if(p->remaining_tickets>chosenTicketNumber && p->remaining_tickets<currentBest){
+          currentBest = p->remaining_tickets;
+          chosenProc = p;
+          printf("chosen lottery: %d\n",p->pid);
+        }
+        release(&p->lock);
+      }
+
+      if(chosenProc==0) break;
+      int index = chosenProc - proc;
+      global_stat.inuse[index] = 1;
+      global_stat.pid[index] = chosenProc->pid;
+      while(chosenProc->state == RUNNABLE && chosenProc->runtime < TIME_LIMIT_1){
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        chosenProc->state = RUNNING;
+        c->proc = chosenProc;
+        swtch(&c->context, &chosenProc->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+        found = 1;
+        chosenProc->runtime += 1;
+        chosenProc->remaining_tickets -= 1;
+        global_stat.tickets_current[index] -= 1;
+    }
+      
+    
+    global_stat.inuse[index] = 0;
+      //p->inuse = 0;
+      if(chosenProc->runtime >= TIME_LIMIT_1){
+          
+          global_stat.inQ[index] = 1;
+          p->inq = 1;
+        }
+
+      global_stat.time_slices[index] += p->runtime;
+      chosenProc->runtime = 0;
+  }
+
+   
+    //round robin 
+    //printf("reaching RR\n");
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       int index = p-proc;
       global_stat.pid[index] = p->pid;
       global_stat.inuse[index] = 1;
-      if(p->state == RUNNABLE) {
-        while(p->state == RUNNABLE && p->runtime < TIME_LIMIT_1){
+      if(p->state == RUNNABLE && p->inq==1) {
+        while(p->state == RUNNABLE && p->runtime < TIME_LIMIT_2){
             // Switch to chosen process.  It is the process's job
             // to release its lock and then reacquire it
             // before jumping back to us.
@@ -475,13 +604,17 @@ scheduler(void)
             // It should have changed its p->state before coming back.
             c->proc = 0;
             found = 1;
+            //printf("reaching RR %s\n",p->name);
             p->runtime += 1;
         }
           
         
-        if(p->runtime < TIME_LIMIT_1){
+        global_stat.inuse[index] = 0;
+        //p->inuse = 0;
+        if(p->runtime < TIME_LIMIT_2){
             
             global_stat.inQ[index] = 0;
+            p->inq = 0;
           }
 
         global_stat.time_slices[index] += p->runtime;
@@ -490,6 +623,8 @@ scheduler(void)
       }
       release(&p->lock);
     }
+
+
     if(found == 0) {
       // nothing to run; stop running on this core until an interrupt.
       intr_on();

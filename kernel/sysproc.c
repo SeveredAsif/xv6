@@ -164,19 +164,27 @@ uint64 sys_history(void){
 }
 
 extern struct pstat global_stat;
+extern struct proc proc[]; 
 uint64 sys_settickets(void){
-  printf("here\n");
   int numberOfTickets;
   struct proc *p = myproc();
 
-  int num = p->trapframe->a7;
+  int num = p-proc;
   argint(0, &numberOfTickets);
+
+  acquire(&p->lock);
   if(numberOfTickets==-1){
     global_stat.tickets_original[num] = DEFAULT_TICKET_COUNT;
+    global_stat.tickets_current[num] = DEFAULT_TICKET_COUNT;
+    p->original_tickets = DEFAULT_TICKET_COUNT;
+    p->remaining_tickets = DEFAULT_TICKET_COUNT;
     return 0;
   }
   global_stat.tickets_original[num] = numberOfTickets;
-
+  global_stat.tickets_current[num] = numberOfTickets;
+  p->original_tickets = numberOfTickets;
+  p->remaining_tickets = numberOfTickets;
+  release(&p->lock);
   return 0;
 }
 
