@@ -6,6 +6,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "stats.h"
+#include "pstat.h"
 
 uint64
 sys_exit(void)
@@ -162,12 +163,28 @@ uint64 sys_history(void){
 
 }
 
+extern struct pstat global_stat;
 uint64 sys_settickets(void){
   printf("here\n");
+  int numberOfTickets;
+  struct proc *p = myproc();
+
+  int num = p->trapframe->a7;
+  argint(0, &numberOfTickets);
+  global_stat.tickets_original[num] = numberOfTickets;
+
   return 0;
 }
 
 uint64 sys_getpinfo(void){
   printf("getting kernel pinfo\n");
+  uint64 user_pstat_pointer;
+  argaddr(0,&user_pstat_pointer);
+  if(user_pstat_pointer<0){
+    return -1;
+  }
+  if (copyout(myproc()->pagetable, user_pstat_pointer, (char *)&global_stat, sizeof(global_stat)) < 0){
+    return -1;
+  }
   return 0;
 }

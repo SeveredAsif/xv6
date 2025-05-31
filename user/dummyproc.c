@@ -7,9 +7,20 @@ int main(int argc, char* argv){
     
     settickets(5);
     getpinfo(&p);
-    // for(int i=0;i<1e9;i++){
-    //     fork();
-    //     fork();
-    //     fork();
-    // }
+    printf("done\n");
+    printf("PID\t| In Use | inQ | Tickets(Original) | Tickets(Current) | Time Slices\n");
+    printf("-------------------------------------------------------------------------\n");
+    
+    for (int i = 0; i < NPROC; i++) {
+      //if (pinfo.inuse[i]) {
+        printf("%d\t|   %d    |  %d   |        %d        |        %d        |     %d\n",
+               p.pid[i],
+               p.inuse[i],
+               p.inQ[i],
+               p.tickets_original[i],
+               p.tickets_current[i],
+               p.time_slices[i]);
+      //}
+    }
+    
 }

@@ -3,13 +3,15 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "defs.h"
+#include "pstat.h"
 
 volatile static int started = 0;
+struct pstat global_stat;
 
 // start() jumps here in supervisor mode on all CPUs.
 void
 main()
-{
+{ 
   if(cpuid() == 0){
     consoleinit();
     printfinit();

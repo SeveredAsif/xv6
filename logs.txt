@@ -14,4 +14,5 @@
 
 31 May 2025
 1. 10:45 am - 12:30 pm  - read the code and spec and watched imtiaz bhai vdo and understood the flow 
-2. 12:53 pm - 
+2. 12:53 pm - 1:45 pm - added one user func and two syscalls 
+3. 3;01 PM - 4:31 pm - round robin almost done, global stat printed in dummyproc, global stat added in sysproc.c 

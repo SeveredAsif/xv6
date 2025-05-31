@@ -194,6 +194,7 @@ syscall(void)
     release(&tickslock);
     syscall_stats[num].accum_time = ticks1-ticks0;
     //printf("syscall time: %d\n",ticks1-ticks0);
+    //printf("syscall: %s, tickets: %d\n",syscall_names[num],global_stat.tickets_original[num]);
   
   } else {
     printf("%d %s: unknown sys call %d\n",
