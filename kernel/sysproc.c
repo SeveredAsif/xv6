@@ -161,3 +161,13 @@ uint64 sys_history(void){
 
 
 }
+
+uint64 sys_settickets(void){
+  printf("here\n");
+  return 0;
+}
+
+uint64 sys_getpinfo(void){
+  printf("getting kernel pinfo\n");
+  return 0;
+}

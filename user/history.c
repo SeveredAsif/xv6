@@ -6,7 +6,7 @@
 int main(int argc, char *argv[]){
     struct syscall_stat s;
     if (argc != 2) {
-        for(int i=0;i<23;i++){
+        for(int i=1;i<25;i++){
             int success = history(i,&s);
             if(success<0){
                 printf("history: syscall failed\n");

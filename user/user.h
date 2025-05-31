@@ -1,5 +1,7 @@
 struct syscall_stat;
 struct stat;
+struct pstat;
+
 
 // system calls
 int fork(void);
@@ -24,6 +26,8 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int history(int, struct syscall_stat*);
+int settickets(int number);
+int getpinfo(struct pstat*);
 
 // ulib.c
 int stat(const char*, struct stat*);
