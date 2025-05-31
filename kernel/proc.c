@@ -459,6 +459,9 @@ scheduler(void)
     int found = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
+      int index = p-proc;
+      global_stat.pid[index] = p->pid;
+      global_stat.inuse[index] = 1;
       if(p->state == RUNNABLE) {
         while(p->state == RUNNABLE && p->runtime < TIME_LIMIT_1){
             // Switch to chosen process.  It is the process's job
@@ -474,12 +477,15 @@ scheduler(void)
             found = 1;
             p->runtime += 1;
         }
-          if(p->runtime < TIME_LIMIT_1){
-            int num = p->trapframe->a7;
-            global_stat.inQ[num] = 0;
+          
+        
+        if(p->runtime < TIME_LIMIT_1){
+            
+            global_stat.inQ[index] = 0;
           }
 
-          p->runtime = 0;
+        global_stat.time_slices[index] += p->runtime;
+        p->runtime = 0;
 
       }
       release(&p->lock);

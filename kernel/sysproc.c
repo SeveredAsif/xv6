@@ -171,6 +171,10 @@ uint64 sys_settickets(void){
 
   int num = p->trapframe->a7;
   argint(0, &numberOfTickets);
+  if(numberOfTickets==-1){
+    global_stat.tickets_original[num] = DEFAULT_TICKET_COUNT;
+    return 0;
+  }
   global_stat.tickets_original[num] = numberOfTickets;
 
   return 0;
