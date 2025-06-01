@@ -201,6 +201,22 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+
+  p->original_tickets = 0;
+  p->remaining_tickets = 0;
+  p->runtime = 0;
+
+  
+  for (int i = 0; i < NPROC; i++) {
+    if (global_stat.pid[i] == p->pid) {
+      global_stat.inuse[i] = 0;
+      global_stat.pid[i] = 0;
+      global_stat.tickets_original[i] = 0;
+      global_stat.tickets_current[i] = 0;
+      global_stat.time_slices[i] = 0;
+      break;
+    }
+  }
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -410,6 +426,22 @@ exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  p->original_tickets = 0;
+  p->remaining_tickets = 0;
+  p->runtime = 0;
+
+  
+  for (int i = 0; i < NPROC; i++) {
+    if (global_stat.inuse[i] && global_stat.pid[i] == p->pid) {
+      global_stat.inuse[i] = 0;
+      global_stat.pid[i] = 0;
+      global_stat.tickets_original[i] = 0;
+      global_stat.tickets_current[i] = 0;
+      global_stat.time_slices[i] = 0;
+      break;
+    }
+  }
+  
 
   release(&wait_lock);
 
@@ -511,8 +543,8 @@ scheduler(void)
       // printf("scheduler reaching lottery at time: %d\n",currTime);
       //first choose a random number 
       struct xorshift128p_state seed;
-      seed.x[0] = 12345;
-      seed.x[1] = 98765;
+      seed.x[0] = 12345 + ticks;
+      seed.x[1] = (ticks << 1) ^ 98765;
       uint64_t random_number =  xorshift128p(&seed);
       //make an array with proccesses that are inq = 0 and runnable and tickets > 0 
       struct proc *lotteryPool[NPROC]; 
@@ -581,16 +613,18 @@ scheduler(void)
         release(&p->lock);
       }
 
-      if(chosenProc==0){break;} 
+      if(chosenProc==0){break;}
+      acquire(&chosenProc->lock); 
       int index = chosenProc - proc;
-      //printf("chosen index: %d\n",index);
+      //printf("chosen index: %d for pid %d\n",index,chosenProc->pid);
       global_stat.inuse[index] = 1;
       global_stat.pid[index] = chosenProc->pid;
       while(chosenProc->state == RUNNABLE && chosenProc->runtime < TIME_LIMIT_1){
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
-        acquire(&chosenProc->lock);
+        //printf("chosen pid %d for chosen ticket number:%d ,remaining tickets: %d , for random number:%lld \n",chosenProc->pid,chosenTicketNumber,chosenProc->remaining_tickets,random_number);
+        //acquire(&chosenProc->lock);
         chosenProc->state = RUNNING;
         c->proc = chosenProc;
         swtch(&c->context, &chosenProc->context);
@@ -603,7 +637,7 @@ scheduler(void)
         chosenProc->remaining_tickets -= 1;
         global_stat.tickets_current[index] -= 1;
         //printf("remaining tickets: %d\n",chosenProc->remaining_tickets);
-        release(&chosenProc->lock);
+        //release(&chosenProc->lock);
     }
       
     
@@ -617,6 +651,7 @@ scheduler(void)
 
       global_stat.time_slices[index] += p->runtime;
       chosenProc->runtime = 0;
+      release(&chosenProc->lock);
   }
 
    
@@ -632,6 +667,7 @@ scheduler(void)
             // Switch to chosen process.  It is the process's job
             // to release its lock and then reacquire it
             // before jumping back to us.
+            //printf("RR pid: %d\n",p->pid);
             p->state = RUNNING;
             c->proc = p;
             swtch(&c->context, &p->context);

@@ -22,3 +22,9 @@ dummyproc 100&;dummyproc 200&;dummyproc 300&;testprocinfo
 6. 7:31 pm - 9:54 pm - buggy lottery (inq prblm )
 7. 9:55 pm - 10:35 - bug almost gone but every process running in RR 
 8. 10:58 pm - 12:28 am - lottery fixed, but a few bugs remain like remaining> current
+dummyproc 3000&;testprocinfo --> issue in getpinfo atomicity ig 
+dummyproc 300&;dummyproc 30000&;dummyproc 300&;dummyproc 30000&;testprocinfo 
+dummyproc 100&;dummyproc 500&;dummyproc 300&;dummyproc 400&;testprocinfo 
+
+1 JUN 2025
+1. 11:00 am-1:13 pm  - free proc, exit proc, random seed, dummyproc,testproc cng (still confusion), task1 mismatch now

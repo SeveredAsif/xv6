@@ -174,8 +174,8 @@ uint64 sys_settickets(void){
 
   acquire(&p->lock);
   if(numberOfTickets==-1){
-    global_stat.tickets_original[num] = DEFAULT_TICKET_COUNT;
-    global_stat.tickets_current[num] = DEFAULT_TICKET_COUNT;
+     global_stat.tickets_original[num] = DEFAULT_TICKET_COUNT;
+     global_stat.tickets_current[num] = DEFAULT_TICKET_COUNT;
     p->original_tickets = DEFAULT_TICKET_COUNT;
     p->remaining_tickets = DEFAULT_TICKET_COUNT;
     release(&p->lock);
@@ -190,7 +190,7 @@ uint64 sys_settickets(void){
 }
 
 uint64 sys_getpinfo(void){
-  printf("getting kernel pinfo\n");
+  //printf("getting kernel pinfo\n");
   uint64 user_pstat_pointer;
   argaddr(0,&user_pstat_pointer);
   if(user_pstat_pointer<0){
