@@ -172,14 +172,18 @@ static uint64 (*syscalls[])(void) = {
 
 
 
+void syscall_stat_init(){
+  for(int i=0;i<NELEM(syscalls);i++){
+    initlock(&syscall_stats[i].lock,"stat_lock");
+  }
+}
+
 struct syscall_stat syscall_stats[NELEM(syscalls)];
 
 void
 syscall(void)
 {
-  acquire(&tickslock);
-  uint ticks0 = ticks;
-  release(&tickslock);
+
   int num;
   struct proc *p = myproc();
 
@@ -187,12 +191,17 @@ syscall(void)
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
+    acquire(&tickslock);
+    uint ticks0 = ticks;
+    release(&tickslock);
     p->trapframe->a0 = syscalls[num]();
+    acquire(&syscall_stats[num].lock);
     syscall_stats[num].count++;
+    release(&syscall_stats[num].lock);
     acquire(&tickslock);
     uint ticks1 = ticks;
     release(&tickslock);
-    syscall_stats[num].accum_time = ticks1-ticks0;
+    syscall_stats[num].accum_time += ticks1-ticks0;
     //printf("syscall time: %d\n",ticks1-ticks0);
     //printf("syscall: %s, tickets: %d\n",syscall_names[num],global_stat.tickets_original[num]);
   

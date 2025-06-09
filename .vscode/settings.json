@@ -4,6 +4,8 @@
         "user.h": "c",
         "types.h": "c",
         "defs.h": "c",
-        "param.h": "c"
+        "param.h": "c",
+        "spinlock.h": "c",
+        "stats.h": "c"
     }
 }

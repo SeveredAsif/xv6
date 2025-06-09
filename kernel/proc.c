@@ -146,6 +146,11 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  // p->original_tickets = DEFAULT_TICKET_COUNT;
+  // p->remaining_tickets = DEFAULT_TICKET_COUNT;
+  // p->inq = 0;
+  // p->runtime = 0;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -550,18 +555,38 @@ scheduler(void)
       struct proc *lotteryPool[NPROC]; 
       int currInd = 0;
       int total_remaining_tickets = 0;
+      int lotteryProcesses = 0;
       for(p = proc; p < &proc[NPROC]; p++){
         acquire(&p->lock);
-        if(p->inq==0 && p->remaining_tickets>0 && p->state==RUNNABLE){
-          lotteryPool[currInd] = p;
-          currInd++;
-          total_remaining_tickets += p->remaining_tickets;
+        if(p->inq==0 && p->state==RUNNABLE){
+          lotteryProcesses++;
+          if(p->remaining_tickets>0){
+            lotteryPool[currInd] = p;
+            currInd++;
+            total_remaining_tickets += p->remaining_tickets;
+          }
         }
         release(&p->lock);
       }
 
-      if(total_remaining_tickets == 0) {
+      if(lotteryProcesses == 0) {
         //reinitialize all tickets to original ones
+        // for(p = proc;p<&proc[NPROC];p++){
+        //   acquire(&p->lock);
+        //   p->remaining_tickets = p->original_tickets;
+        //   //have to check this logic
+        //   //p->inq = 1;
+        //   int i = p-proc;
+        //   global_stat.tickets_current[i] = p->original_tickets;
+        //   global_stat.tickets_original[i] = p->original_tickets;
+        //   //global_stat.inQ[i] = 1;
+        //   release(&p->lock);
+        // }
+        //printf("breaking\n");
+        break; //jump to level 2 
+      } 
+      if(total_remaining_tickets==0){
+        //reinitialize all tickets to original ones if there are processes in lottery, but no one has tickets
         for(p = proc;p<&proc[NPROC];p++){
           acquire(&p->lock);
           p->remaining_tickets = p->original_tickets;
@@ -569,12 +594,12 @@ scheduler(void)
           //p->inq = 1;
           int i = p-proc;
           global_stat.tickets_current[i] = p->original_tickets;
+          global_stat.tickets_original[i] = p->original_tickets;
           //global_stat.inQ[i] = 1;
           release(&p->lock);
         }
-        //printf("breaking\n");
-        break; //jump to level 2 
-      } 
+        continue; //continue with lottery
+      }
       //printf("scheduler reaching tickets: %d\n",total_remaining_tickets);
       int chosenTicketNumber = random_number % total_remaining_tickets;
       struct proc* chosenProc = 0;
@@ -619,6 +644,14 @@ scheduler(void)
       //printf("chosen index: %d for pid %d\n",index,chosenProc->pid);
       global_stat.inuse[index] = 1;
       global_stat.pid[index] = chosenProc->pid;
+
+      
+      //reducing tickets because i scheduled this process by choosing it 
+      chosenProc->remaining_tickets -= 1;
+      global_stat.tickets_current[index] -= 1;
+      global_stat.time_slices[index]++; //i chose it, so another time slice increase for it
+
+
       while(chosenProc->state == RUNNABLE && chosenProc->runtime < TIME_LIMIT_1){
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
@@ -634,23 +667,26 @@ scheduler(void)
         c->proc = 0;
         found = 1;
         chosenProc->runtime += 1;
-        chosenProc->remaining_tickets -= 1;
-        global_stat.tickets_current[index] -= 1;
         //printf("remaining tickets: %d\n",chosenProc->remaining_tickets);
         //release(&chosenProc->lock);
     }
       
     
-    global_stat.inuse[index] = 0;
+    
       //p->inuse = 0;
-      if(chosenProc->runtime >= TIME_LIMIT_1){
+      if(chosenProc->runtime >= TIME_LIMIT_1){ //(should make ==) if i used more time than allocated, go to round robin
           
           global_stat.inQ[index] = 1;
           p->inq = 1;
         }
 
-      global_stat.time_slices[index] += p->runtime;
-      chosenProc->runtime = 0;
+        else{
+          chosenProc->runtime = 0; //(recheck logic) process run done, so runtime resets, otherwise, when going to round robin, we dont make the runtime 0
+          global_stat.inuse[index] = 0; //recheck this logic 
+        }
+
+      
+      
       release(&chosenProc->lock);
   }
 
@@ -663,6 +699,7 @@ scheduler(void)
       global_stat.pid[index] = p->pid;
       global_stat.inuse[index] = 1;
       if(p->state == RUNNABLE && p->inq==1) {
+        global_stat.time_slices[index]++; //i chose it for running 
         while(p->state == RUNNABLE && p->runtime < TIME_LIMIT_2){
             // Switch to chosen process.  It is the process's job
             // to release its lock and then reacquire it
@@ -681,16 +718,20 @@ scheduler(void)
         }
           
         
-        global_stat.inuse[index] = 0;
+        
         //p->inuse = 0;
         if(p->runtime < TIME_LIMIT_2){
             
             global_stat.inQ[index] = 0;
             p->inq = 0;
           }
+          else{
+            p->runtime = 0; //still in RR, not went to lottery, so runtime made 0, run done
+            global_stat.inuse[index] = 0; //check the logic
+          }
 
-        global_stat.time_slices[index] += p->runtime;
-        p->runtime = 0;
+        
+        
 
       }
       release(&p->lock);

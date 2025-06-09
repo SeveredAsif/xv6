@@ -13,6 +13,7 @@ void
 main()
 { 
   if(cpuid() == 0){
+    syscall_stat_init();
     consoleinit();
     printfinit();
     printf("\n");

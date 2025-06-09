@@ -28,3 +28,9 @@ dummyproc 100&;dummyproc 500&;dummyproc 300&;dummyproc 400&;testprocinfo
 
 1 JUN 2025
 1. 11:00 am-1:13 pm  - free proc, exit proc, random seed, dummyproc,testproc cng (still confusion), task1 mismatch now
+
+8 JUN 2025
+1. 9:42 pm - 10:35 - revision 
+
+9 JUN 2025
+1. 11:30 pm - 1:00pm - stat count 
