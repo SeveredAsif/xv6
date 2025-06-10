@@ -34,3 +34,6 @@ dummyproc 100&;dummyproc 500&;dummyproc 300&;dummyproc 400&;testprocinfo
 
 9 JUN 2025
 1. 11:30 pm - 1:00pm - stat count 
+
+10 JUN 2025 
+1.11:00 pm -1:11 pm - debug statement + dummyproc fork + testproc while no + timeslice logic + global stat update logic fix 

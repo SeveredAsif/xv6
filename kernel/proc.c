@@ -582,11 +582,18 @@ scheduler(void)
         //   //global_stat.inQ[i] = 1;
         //   release(&p->lock);
         // }
+        if(PRINT_SCHEDULING==1){
+          printf("breaking to ROUND ROBIN because no process in Lottery are RUNNABLE (or there are no processes in Lottery)\n");
+        }
         //printf("breaking\n");
         break; //jump to level 2 
       } 
       if(total_remaining_tickets==0){
         //reinitialize all tickets to original ones if there are processes in lottery, but no one has tickets
+        if(PRINT_SCHEDULING==1){
+            printf("reinitialize all tickets to original ones if there are processes in lottery, but no one has tickets");
+        }
+        
         for(p = proc;p<&proc[NPROC];p++){
           acquire(&p->lock);
           p->remaining_tickets = p->original_tickets;
@@ -599,6 +606,9 @@ scheduler(void)
           release(&p->lock);
         }
         continue; //continue with lottery
+      }
+      if(PRINT_SCHEDULING==1){
+        printf("scheduler reaching tickets: %d\n",total_remaining_tickets);
       }
       //printf("scheduler reaching tickets: %d\n",total_remaining_tickets);
       int chosenTicketNumber = random_number % total_remaining_tickets;
@@ -641,15 +651,28 @@ scheduler(void)
       if(chosenProc==0){break;}
       acquire(&chosenProc->lock); 
       int index = chosenProc - proc;
+      if(PRINT_SCHEDULING==1){
+        printf("chosen index: %d for pid %d using lottery\n",index,chosenProc->pid);
+      }
       //printf("chosen index: %d for pid %d\n",index,chosenProc->pid);
       global_stat.inuse[index] = 1;
       global_stat.pid[index] = chosenProc->pid;
 
       
       //reducing tickets because i scheduled this process by choosing it 
+
       chosenProc->remaining_tickets -= 1;
-      global_stat.tickets_current[index] -= 1;
-      global_stat.time_slices[index]++; //i chose it, so another time slice increase for it
+
+      //setting the global stats for printing
+      global_stat.tickets_current[index] = chosenProc->remaining_tickets;
+      global_stat.tickets_original[index] = chosenProc->original_tickets;
+      
+
+      if(TICKET_DEBUG){
+        if(global_stat.tickets_current[index]<0){
+          printf("ALERT!!pid:%d has negative tickets!\n",chosenProc->pid);
+        }
+      }
 
 
       while(chosenProc->state == RUNNABLE && chosenProc->runtime < TIME_LIMIT_1){
@@ -667,6 +690,7 @@ scheduler(void)
         c->proc = 0;
         found = 1;
         chosenProc->runtime += 1;
+        global_stat.time_slices[index]++; //i chose it, so another time slice increase for it
         //printf("remaining tickets: %d\n",chosenProc->remaining_tickets);
         //release(&chosenProc->lock);
     }
@@ -677,7 +701,10 @@ scheduler(void)
       if(chosenProc->runtime >= TIME_LIMIT_1){ //(should make ==) if i used more time than allocated, go to round robin
           
           global_stat.inQ[index] = 1;
-          p->inq = 1;
+          chosenProc->inq = 1;
+          if(PRINT_SCHEDULING==1){
+            printf("demoting process pid:%d because it is taking more time than TIME_LIMIT_1\n",chosenProc->pid);
+          }
         }
 
         else{
@@ -692,18 +719,24 @@ scheduler(void)
 
    
     //round robin 
+    if(PRINT_SCHEDULING==1){
+      printf("reaching RR\n");
+    }
     //printf("reaching RR\n");
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       int index = p-proc;
       global_stat.pid[index] = p->pid;
-      global_stat.inuse[index] = 1;
+      
       if(p->state == RUNNABLE && p->inq==1) {
-        global_stat.time_slices[index]++; //i chose it for running 
         while(p->state == RUNNABLE && p->runtime < TIME_LIMIT_2){
             // Switch to chosen process.  It is the process's job
             // to release its lock and then reacquire it
             // before jumping back to us.
+            global_stat.inuse[index] = 1; // i am choosing it to run, so inuse = 1 
+            if(PRINT_SCHEDULING==1){
+              printf("RR pid: %d\n",p->pid);
+            }
             //printf("RR pid: %d\n",p->pid);
             p->state = RUNNING;
             c->proc = p;
@@ -713,8 +746,9 @@ scheduler(void)
             // It should have changed its p->state before coming back.
             c->proc = 0;
             found = 1;
-            //printf("reaching RR %s\n",p->name);
+            //printf("reaching RR ,process name: %s\n",p->name);
             p->runtime += 1;
+            global_stat.time_slices[index]++; //i chose it for running 
         }
           
         
@@ -724,6 +758,9 @@ scheduler(void)
             
             global_stat.inQ[index] = 0;
             p->inq = 0;
+            if(PRINT_SCHEDULING==1){
+              printf("promoting pid:%d to lottery because it took less time than TIME_LIMIT_2\n",p->pid);
+            }
           }
           else{
             p->runtime = 0; //still in RR, not went to lottery, so runtime made 0, run done

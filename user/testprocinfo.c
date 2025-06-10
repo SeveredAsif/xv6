@@ -34,7 +34,7 @@ int main() {
     struct pstat p;
     
     
-    while (1) {
+    //while (1) {
       getpinfo(&p);
       printf("Running testprocinfo as PID %d\n", getpid());
 
@@ -47,7 +47,7 @@ int main() {
                 printf("%d\t   %d      %d           %d                %d                 %d\n",
                        p.pid[i],
                        p.inuse[i],
-                       p.inQ[i],
+                       p.inQ[i]+1,
                        p.tickets_original[i],
                        p.tickets_current[i],
                        p.time_slices[i]);
@@ -55,5 +55,5 @@ int main() {
         }
         sleep(50); // Delay to avoid spamming output and to allow change over time
         printf("\n\n");
-    }
+    //}
 }

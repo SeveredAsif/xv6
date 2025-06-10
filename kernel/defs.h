@@ -199,3 +199,5 @@ void syscall_stat_init();
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+#define PRINT_SCHEDULING 0
+#define TICKET_DEBUG 0

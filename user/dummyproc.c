@@ -81,6 +81,9 @@ int main(int argc, char* argv[]) {
             x += j % 3;
         }
         //fork();
+        if(i%10==0){
+            fork();
+        }
         //printf("dummyproc PID %d - Iteration %d\n", pid, i);
         sleep(20); // Yield the CPU briefly
     }
